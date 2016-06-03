@@ -9,11 +9,11 @@
 # All rights reserved. Published under the BSD-2 license in the LICENSE file.
 ################################################################################
 
+add_subdirectory(graphgen2)
 add_subdirectory(k-means)
 add_subdirectory(page_rank)
 add_subdirectory(select)
 add_subdirectory(suffix_sorting)
 add_subdirectory(terasort)
 add_subdirectory(word_count)
-
 ################################################################################

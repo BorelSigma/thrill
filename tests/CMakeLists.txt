@@ -173,6 +173,9 @@ thrill_build_test(examples/page_rank_test)
 thrill_build_test(examples/select_test)
 thrill_build_test(examples/word_count_test)
 
+thrill_build_test(examples/graphgen2_test)
+
+
 ### Copy input files into tests binary directory: CMAKE_BINARY_DIR/tests/
 
 file(COPY "inputs/" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/inputs/")
