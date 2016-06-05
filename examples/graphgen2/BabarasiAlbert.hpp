@@ -32,22 +32,17 @@ public:
 		// Falls nicht auf den Seed gehasht wurde
 		if(r>=(m0_*2))	
 		{
-			Edge buffer = Edge(n0_+(eid-m0_)/d_,n0_+(r-(m0_*2))/(2*d_));
-			if(buffer.first >= n_)	std::cerr<<" Error in BA in non-seed part with first!"<<std::endl;
-			if(buffer.second >= n_)	std::cerr<<" Error in BA in non-seed part with second!"<<std::endl;
+			Edge buffer = Edge(n0_+(eid-m0_)/d_ , n0_+(r-(m0_*2))/(2*d_));
 			return buffer;
 		}		
 		else
 		{	
 			Edge buffer = seed_(r/2);
 
-			if(buffer.first >= n0_)	std::cerr<<" Error in BA!"<<std::endl;
-			if(buffer.second >= n0_)	std::cerr<<" Error in BA!"<<std::endl;
-
 			if( (r&1) == 0)
-				return Edge(n0_+(eid-m0_)/d_, buffer.first);
+				return Edge(n0_+(eid-m0_)/d_ , buffer.first);
 			else
-				return Edge(n0_+(eid-m0_)/d_, buffer.second);
+				return Edge(n0_+(eid-m0_)/d_ , buffer.second);
 		}
 	}
 

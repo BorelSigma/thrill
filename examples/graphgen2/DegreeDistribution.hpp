@@ -11,7 +11,7 @@ template<class Graph>
 class DegreeDistribution
 {
 public:
-	DegreeDistribution(Graph &g)
+	DegreeDistribution(const Graph &g)
 	{
 		const Node n = g.number_of_nodes();
 		std::vector<Node> nodes(n);
@@ -51,7 +51,7 @@ public:
 		uint64_t amount_of_push_backs = 0;
 
 		std::cout<<"Calculate distribution"<<std::endl;	
-		for(Degree i=0;i<n;i++)
+		for(Node i=0;i<n;i++)
 		{
 			while(nodes[i] >= max_degree)
 			{
@@ -68,8 +68,10 @@ public:
 		f.open(fileName,std::ios::out);
 		
 		for(Degree i=0;i<distr.size();i++)
-			f<<distr[i]<<" "<<i<<std::endl;
-
+		{
+			if(distr[i] >0)
+				f<<i<<" "<<distr[i]<<std::endl;
+		}
 		f.close();
 	}
 };
