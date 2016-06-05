@@ -19,9 +19,10 @@ TEST(PathGraph, PathGraphTest) {
 
     auto start_func =
         [](Context& ctx) {
-	    GraphGen2::PathGraph p(5);
-            ASSERT_EQ(GraphGen2::Edge(0,1), p(0));
-            ASSERT_EQ(GraphGen2::Edge(1,2), p(1));
+	    GraphGen2::PathGraph p(100);
+	
+	    for(uint32_t i = 0;i<99;i++)
+		ASSERT_EQ(p(i),GraphGen2::Edge(i,i+1));
         };
 
     api::RunLocalTests(start_func);
@@ -31,37 +32,65 @@ TEST(CliqueGraph, CliqueGraphTest) {
 
     auto start_func =
         [](Context& ctx) {
-	    GraphGen2::CliqueGraph c(5);
-            ASSERT_EQ(c.number_of_edges(), 10);
-            ASSERT_EQ(GraphGen2::Edge(2,3), c(5));
+	    GraphGen2::CliqueGraph c(100);
+	    std::vector<GraphGen2::Degree> degrees(100,0);
+
+	    for(uint32_t i = 0; i < c.number_of_edges(); i++)
+	    {
+		degrees[c(i).first]++;
+		degrees[c(i).second]++;
+	    }
+
+	    for(uint32_t i = 0; i < 100; i++)
+		ASSERT_EQ(degrees[i],99);
         };
 
     api::RunLocalTests(start_func);
 }
+
+class BATestHash
+{
+public:
+	BATestHash(){};
+	uint64_t operator()(const uint64_t &value) const
+	{ 
+		return value-1;
+	}
+};
+
+/**
+*	Cooles DoxygenZeug
+*
+**/
 
 TEST(BAGraph, BAGraphTest) {
 
     auto start_func =
         [](Context& ctx) {
-	    GraphGen2::BAHash h;
-	    GraphGen2::CliqueGraph c(5);
-	    GraphGen2::BAGraph<GraphGen2::CliqueGraph,GraphGen2::BAHash> BA(10,2,c,h);
-
-            ASSERT_EQ(BA.number_of_edges(), 20);
-            ASSERT_EQ(GraphGen2::Edge(2,3), BA(5));
-            ASSERT_EQ(5, BA(10).first);
+	    BATestHash h;
+	    GraphGen2::PathGraph p(10);
+	    GraphGen2::BAGraph<GraphGen2::PathGraph,BATestHash> BA(100,1,p,h);
+		
+	    uint32_t i = 0;
+	    for(;i<p.number_of_edges();i++)
+		ASSERT_EQ(BA(i),GraphGen2::Edge(i,i+1));
+	    for(;i<BA.number_of_edges();i++)
+		ASSERT_EQ(BA(i),GraphGen2::Edge(i+1,i+1));
         };
 
     api::RunLocalTests(start_func);
 }
 
-TEST(DegreeDistribution, DDTest) {
+TEST(BAHash, BAHashTest) {
 
     auto start_func =
         [](Context& ctx) {
-		// There is nothing here yet
-		// Still need a few tests for degree distribution
-            ASSERT_EQ(1, 1);
+		GraphGen2::BAHash h;		
+	
+		for(uint32_t i = 10; i < 1e8;i++)
+		{
+			ASSERT_LT(h(i),i);
+		}
         };
 
     api::RunLocalTests(start_func);
