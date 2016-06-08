@@ -1,1 +1,1 @@
-thrill_build_prog(BA-run)
+thrill_build_prog(run2)
