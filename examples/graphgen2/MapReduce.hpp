@@ -3,6 +3,7 @@
 #include <thrill/api/dia.hpp>
 #include <thrill/api/size.hpp>
 #include <thrill/api/reduce_by_key.hpp>
+
 namespace GraphGen2 {
     using namespace thrill;
     struct NodeCount {
@@ -11,6 +12,15 @@ namespace GraphGen2 {
 
         friend std::ostream& operator << (std::ostream& os, const NodeCount& a) {
             return os << '(' << a.node << '|' << a.deg << ')';
+        }
+    } THRILL_ATTRIBUTE_PACKED;
+
+    struct DegreeCount {
+        Degree deg;
+        Degree count;
+
+        friend std::ostream& operator << (std::ostream& os, const DegreeCount& a) {
+            return os << '(' << a.deg << '|' << a.count << ')';
         }
     } THRILL_ATTRIBUTE_PACKED;
 
@@ -28,7 +38,7 @@ namespace GraphGen2 {
 
         std::cout << "DIA size after flatMap: " << nodes_dia.Size() << std::endl;
 
-        return nodes_dia.ReduceByKey(
+        auto reduced =  nodes_dia.ReduceByKey(
         [](const NodeCount& in) -> Node {
             return in.node;
         },
@@ -36,7 +46,42 @@ namespace GraphGen2 {
             /* associative reduction operator: add counters */
             return NodeCount{a.node, a.deg + b.deg};
         });
+
+	auto nodes_dia2 = reduced.template FlatMap<DegreeCount>([](const NodeCount& degree, auto emit){
+            emit(DegreeCount{degree.deg, 1});
+        });
+
+	return nodes_dia2.ReduceByKey(
+        [](const DegreeCount& in) -> Node {
+            return in.deg;
+        },
+        [](const DegreeCount& a, const DegreeCount& b) -> DegreeCount {
+            // associative reduction operator: add counters 
+            return DegreeCount{a.deg, a.count + b.count};
+        });
+	//return nodes_dia2;
     }
 
+    template <typename InputStack>
+    auto ParallelDegreeDistribution(DIA<NodeCount ,InputStack>& input_nodes)
+    {
+    	std::cout << "DegreeDistribution called" << std::endl;
+    	std::cout << "input DIA size: " << input_nodes.Size() << std::endl;
 
+      /*  auto nodes_dia = input_nodes.template FlatMap<DegreeCount>([](const NodeCount& degree, auto emit){
+            emit(DegreeCount{degree.deg, 1});
+        });
+
+        std::cout << "DD DIA size after flatMap: " << nodes_dia.Size() << std::endl;
+
+        return nodes_dia.ReduceByKey(
+        [](const DegreeCount& in) -> Node {
+            return in.deg;
+        },
+        [](const DegreeCount& a, const DegreeCount& b) -> DegreeCount {
+            // associative reduction operator: add counters 
+            return DegreeCount{a.deg, a.count + b.count};
+        });*/
+	return input_nodes;
+    }
 }
