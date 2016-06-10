@@ -25,18 +25,12 @@ namespace GraphGen2 {
     } THRILL_ATTRIBUTE_PACKED;
 
     template <typename InputStack>
-    auto MapEdges (
-        DIA<Edge ,InputStack>& input_edges
-        ){
-    	std::cout << "MapEdges called" << std::endl;
-    	std::cout << "input DIA size: " << input_edges.Size() << std::endl;
-
+    auto ParallelDegreeDistribution (DIA<Edge ,InputStack>& input_edges)
+    {
         auto nodes_dia = input_edges.template FlatMap<NodeCount>([](const Edge& edge, auto emit){
             emit(NodeCount{edge.first, 1});
             emit(NodeCount{edge.second, 1});
         });
-
-        std::cout << "DIA size after flatMap: " << nodes_dia.Size() << std::endl;
 
         auto reduced =  nodes_dia.ReduceByKey(
         [](const NodeCount& in) -> Node {
@@ -59,29 +53,5 @@ namespace GraphGen2 {
             // associative reduction operator: add counters 
             return DegreeCount{a.deg, a.count + b.count};
         });
-	//return nodes_dia2;
-    }
-
-    template <typename InputStack>
-    auto ParallelDegreeDistribution(DIA<NodeCount ,InputStack>& input_nodes)
-    {
-    	std::cout << "DegreeDistribution called" << std::endl;
-    	std::cout << "input DIA size: " << input_nodes.Size() << std::endl;
-
-      /*  auto nodes_dia = input_nodes.template FlatMap<DegreeCount>([](const NodeCount& degree, auto emit){
-            emit(DegreeCount{degree.deg, 1});
-        });
-
-        std::cout << "DD DIA size after flatMap: " << nodes_dia.Size() << std::endl;
-
-        return nodes_dia.ReduceByKey(
-        [](const DegreeCount& in) -> Node {
-            return in.deg;
-        },
-        [](const DegreeCount& a, const DegreeCount& b) -> DegreeCount {
-            // associative reduction operator: add counters 
-            return DegreeCount{a.deg, a.count + b.count};
-        });*/
-	return input_nodes;
     }
 }
