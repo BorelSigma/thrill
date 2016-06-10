@@ -14,14 +14,14 @@ using namespace thrill;
 TEST(PathGraph, PathGraphTest) {
 
     auto start_func =
-            [](Context &ctx) {
+            []() {
                 GraphGen2::PathGraph p(100);
 
                 for (uint32_t i = 0; i < 99; i++)
                     ASSERT_EQ(p(i), GraphGen2::Edge(i, i + 1));
             };
 
-    api::RunLocalTests(start_func);
+    start_func();
 }
 
 /**
@@ -30,7 +30,7 @@ TEST(PathGraph, PathGraphTest) {
 TEST(CliqueGraph, CliqueGraphTest) {
 
     auto start_func =
-            [](Context &ctx) {
+            []() {
                 GraphGen2::CliqueGraph c(100);
                 std::vector<GraphGen2::Degree> degrees(100, 0);
 
@@ -43,7 +43,7 @@ TEST(CliqueGraph, CliqueGraphTest) {
                     ASSERT_EQ(degrees[i], 99);
             };
 
-    api::RunLocalTests(start_func);
+    start_func();
 }
 
 /**
@@ -66,7 +66,7 @@ public:
 TEST(BAGraph, BAGraphTest) {
 
     auto start_func =
-            [](Context &ctx) {
+            []() {
                 BATestHash h;
                 GraphGen2::PathGraph p(10);
                 GraphGen2::BAGraph<GraphGen2::PathGraph, BATestHash> BA(100, 1, p, h);
@@ -78,7 +78,7 @@ TEST(BAGraph, BAGraphTest) {
                     ASSERT_EQ(BA(i), GraphGen2::Edge(i + 1, i + 1));
             };
 
-    api::RunLocalTests(start_func);
+    start_func();
 }
 
 /**
@@ -87,7 +87,7 @@ TEST(BAGraph, BAGraphTest) {
 TEST(BAHash, BAHashTest) {
 
     auto start_func =
-            [](Context &ctx) {
+            []() {
                 GraphGen2::BAHash h;
 
                 for (uint32_t i = 10; i < 1e8; i++) {
@@ -95,5 +95,5 @@ TEST(BAHash, BAHashTest) {
                 }
             };
 
-    api::RunLocalTests(start_func);
+    start_func();
 }
