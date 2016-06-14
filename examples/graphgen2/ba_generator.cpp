@@ -44,15 +44,23 @@ static void runParallel(thrill::Context& ctx, Graph &graph, std::string output)
     	auto degrees = GraphGen2::ParallelDegreeDistribution(edges_dia);
     
     std::cout<<"Vor der Ausgabe"<<std::endl;
+<<<<<<< HEAD
     /*std::vector<DegreeCount> output_vector = degrees.Gather(0);
+=======
+    std::vector<DegreeCount> output_vector = degrees.Gather(0);
+>>>>>>> 55694419acfd50d4b7a3390e41d3153aaa919353
     
     std::fstream file;
     file.open(output,std::ios::out);
  
     for(DegreeCount dc : output_vector)
+<<<<<<< HEAD
 	file<<dc.deg<<" "<<dc.count<<std::endl;*/
 
     degrees.WriteLines(output);
+=======
+	file<<dc.deg<<" "<<dc.count<<std::endl;
+>>>>>>> 55694419acfd50d4b7a3390e41d3153aaa919353
 }
 
 int main(int argc, char* argv[])
