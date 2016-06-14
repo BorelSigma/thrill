@@ -4,6 +4,8 @@
 #include <thrill/api/size.hpp>
 #include <thrill/api/reduce_by_key.hpp>
 
+#include <sstream>
+
 namespace GraphGen2 {
     using namespace thrill;
     struct NodeCount {
@@ -50,8 +52,14 @@ namespace GraphGen2 {
             return in.deg;
         },
         [](const DegreeCount& a, const DegreeCount& b) -> DegreeCount {
-            // associative reduction operator: add counters 
             return DegreeCount{a.deg, a.count + b.count};
-        });
+        }).Map([](const DegreeCount& dc){
+		std::stringstream ss;
+		ss<<dc.deg;
+		std::stringstream ss2;
+		ss2<<dc.count;
+		std::string output = ss.str() + " "+ss2.str();
+		return output;
+	});
     }
 }
