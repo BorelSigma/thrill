@@ -1,5 +1,6 @@
 #pragma once
 
+#include <thrill/common/defines.hpp>
 #include "SeedGen.hpp"
 #include "Hash.hpp"
 
@@ -32,7 +33,7 @@ public:
 	{
 		assert(eid < number_of_edges());
 		
-		if(eid < m0_)
+		if(THRILL_UNLIKELY(eid < m0_))
 			return seed_(eid);
 		
 		Node r = h_(2*eid+1);
@@ -41,7 +42,7 @@ public:
 			r = h_(r);
 			
 
-		if(r>=(m0_*2))	/// If hash does not point to seed graph
+		if(THRILL_LIKELY(r>=(m0_*2)))	/// If hash does not point to seed graph
 		{
 			Edge buffer = Edge(n0_+(eid-m0_)/d_ , n0_+(r-(m0_*2))/(2*d_));
 			return buffer;

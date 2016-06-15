@@ -1,1 +1,1 @@
-thrill_build_prog(run2)
+thrill_build_prog(ba_generator)
