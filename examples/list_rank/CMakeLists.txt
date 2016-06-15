@@ -1,0 +1,1 @@
+thrill_build_prog(list_rank_run)
