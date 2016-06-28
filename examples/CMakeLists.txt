@@ -10,6 +10,7 @@
 ################################################################################
 
 add_subdirectory(graphgen2)
+add_subdirectory(list_rank)
 add_subdirectory(k-means)
 add_subdirectory(page_rank)
 add_subdirectory(select)

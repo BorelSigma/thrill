@@ -43,6 +43,7 @@ static void runParallel(thrill::Context& ctx, Graph &graph, std::string output)
 
 	auto degrees = GraphGen2::ParallelDegreeDistribution(edges_dia);
 	    
+    std::cout<<"Vor der Ausgabe"<<std::endl;
 	degrees.WriteLines(output);
 
 }

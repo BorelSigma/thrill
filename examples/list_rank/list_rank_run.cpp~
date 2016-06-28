@@ -2,7 +2,7 @@
 
 #include <fstream>
 //#include <examples/list_rank/mapReduce.cpp>
-#include "independentSet.hpp"
+#include <independetSet.hpp>
 #include <thrill/api/context.hpp>
 #include <thrill/api/generate.hpp>
 #include <thrill/api/collapse.hpp>

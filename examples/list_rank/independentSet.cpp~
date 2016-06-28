@@ -1,0 +1,59 @@
+#pragma once
+#include <examples/graphgen2/SeedGen.hpp>
+#include <sstream>
+#include <thrill/api/context.hpp>
+#include <thrill/api/generate.hpp>
+#include <thrill/api/collapse.hpp>
+#include <thrill/api/dia.hpp>
+#include <thrill/api/size.hpp>
+#include <thrill/api/print.hpp>
+#include <thrill/api/write_lines.hpp>
+#include <thrill/api/reduce_by_key.hpp>
+#include <algorithm>
+#include <string>
+#include <utility>
+#include <vector>
+#include <ctime>
+
+namespace ListRank2 
+{
+	using namespace thrill;
+
+	using Edge = GraphGen2::Edge;
+	using Node = GraphGen2::Node;
+	using Rank = uint64_t;
+	using Values2 = std::pair<bool, bool>;
+	using somethingelse = std::pair<bool, bool>;
+	/**
+	 * 
+	 * rank is computet as follows: 
+	 */
+	struct ListElm {
+		Node elm_index; /// index of this element
+		Node prev_elm; /// index of element which is needed for rank computation. If value is 0 -> rank is computed. 
+		Rank elm_rank;	/// current computed rank. Might depend on other element's rank (if prev_elm == 0)
+		bool isHelper; /// indicates whether this element is only helper element in reduce step
+
+		friend std::ostream &operator<<(std::ostream &os, const ListElm &a) {
+			return os << '(' << a.elm_index << '|' << a.prev_elm << '|' << a.elm_rank << '|' << a.isHelper << ')';
+		}
+	} THRILL_ATTRIBUTE_PACKED;
+
+	struct EdgeValuePair 
+	{
+		Edge e;
+		Values v;
+		bool isHelper;
+	} THRILL_ATTRIBUTE_PACKED;
+
+	static void runParallel(thrill::Context& ctx, Edge edges[], std::string output) 
+		{
+			ctx.enable_consume();
+
+			auto edges_dia = Generate(ctx, [edges](const size_t& index){
+				return edges[index];
+			}, 9);
+
+			//prepareDia(edges_dia);
+		}
+}
