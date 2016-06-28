@@ -18,7 +18,7 @@ using Edge = GraphGen2::Edge;
 
 int main(int argc, char* argv[])
 {
-	Edge edges [9] = {
+	/*Edge edges [9] = {
 	Edge(0,1),
 	Edge(1,2),
 	Edge(2,3),
@@ -27,8 +27,14 @@ int main(int argc, char* argv[])
 	Edge(5,6),
 	Edge(6,7),
 	Edge(7,8),
-	Edge(8,9)
-	};
+	Edge(8,9),
+	Edge(9,10),
+	};*/
+
+	std::vector<Edge> edges;
+	
+	for(unsigned int i=0;i<20;i++)
+		edges.push_back(Edge(i,i+1));	
 		
 	std::string output = "test.txt";
 	auto start_func = [&](thrill::Context& ctx) { ListRank2::runParallel(ctx, edges, output);};
