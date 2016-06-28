@@ -16,6 +16,8 @@
 #include <vector>
 #include <ctime>
 
+#define MAX_RAND_VALUE 10000000
+
 namespace ListRank2 
 {
 	using namespace thrill;
@@ -28,7 +30,7 @@ namespace ListRank2
 	{
 		Node dest;
 		bool value0;
-		bool value1;
+		uint32_t value1;
 		bool isHelper;
 	};
 	struct NodeValuePair 
@@ -80,24 +82,48 @@ namespace ListRank2
 		return independentSet;
 	}
 
-	auto getComplement(auto nodeList, auto independentSet)
+	auto changePointer(auto v, auto is)
 	{
-		auto concatDia = nodeList.Concat(independentSet);
-
-		auto withoutDoubles = concatDia.ReduceByKey(
-			[](const NodeValuePair& in) -> Node {return in.n; },
-			[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair
-			{
-				if(a.n == b.n)
-					return NodeValuePair{0, NodeValues{0,0,0,0}};
-			});
-
-		auto complement = withoutDoubles.Filter([](const NodeValuePair& in)
+		auto isTmp = is.Map([](const NodeValuePair &in)
 		{
-			return !( (in.n == 0) && (in.v.dest == 0) );
+			return NodeValuePair{in.v.dest, NodeValues{in.n, false, false, 1}};
+		});
+		auto vTmp = v.Map([](const NodeValuePair &in)
+				{
+					return NodeValuePair{
+						in.n, 
+						NodeValues{
+							in.v.dest,
+							false, 
+							false, 
+							0}};
+				});
+		auto concatTmp = vTmp.Concat(isTmp);
+		auto result = concatTmp.ReduceByKey(
+		[](const NodeValuePair &in){return in.v.dest;},
+		[](const NodeValuePair &a, const NodeValuePair &b){
+			if(a.v.isHelper){
+				return NodeValuePair{
+					b.n,
+					NodeValues{
+						a.n,
+						false,
+						false,
+						false} 				
+				};
+			}else{
+				return NodeValuePair{
+					a.n,
+					NodeValues{
+						b.n,
+						false,
+						false,
+						false} 				
+				};
+			}
 		});
 
-		auto output_independentSet = complement.Map(
+		auto output_independentSet = result.Map(
 			[](const NodeValuePair& e)	-> std::string
 			{
 				std::stringstream ss;
@@ -115,6 +141,31 @@ namespace ListRank2
 			});	
 
 		output_independentSet.WriteLines("debug_logs/IndependentSet.txt");
+
+		return result;	
+
+	}
+
+	auto getComplement(auto nodeList, auto independentSet)
+	{
+		auto concatDia = nodeList.Concat(independentSet);
+
+		auto withoutDoubles = concatDia.ReduceByKey(
+			[](const NodeValuePair& in) -> Node {return in.n; },
+			[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair
+			{
+				if(a.n == b.n)
+					return NodeValuePair{0, NodeValues{0,0,0,0}};
+			});
+
+		auto complement = withoutDoubles.Filter([](const NodeValuePair& in)
+		{
+			return !( (in.n == 0) && (in.v.dest == 0) );
+		});
+
+		
+
+		return complement;
 	}
 
 	static void runParallel(thrill::Context& ctx, std::vector<Edge> edges, std::string output) 
@@ -128,11 +179,12 @@ namespace ListRank2
 				evp.n = edges[index].first;
 				evp.v.dest = edges[index].second;
 				
-				unsigned int random_number_0 = rand()%100000;
-				unsigned int random_number_1 = rand()%100000;
+				unsigned int random_number_0 = rand()%MAX_RAND_VALUE;
+				//unsigned int random_number_1 = rand()%100000;
 
-				evp.v.value0 = (random_number_0 >= random_number_1);	
-				evp.v.value1 = (random_number_0 < random_number_1);
+				evp.v.value0 = (random_number_0 >= MAX_RAND_VALUE/2);	
+				//evp.v.value1 = (random_number_0 < 50000);
+				evp.v.value1 = !evp.v.value0;
 				
 				evp.v.isHelper = false;
 			
@@ -141,5 +193,6 @@ namespace ListRank2
 
 		auto IS = findIndependentSet(nodeValue);
 		auto V  = getComplement(nodeValue,IS);
+		auto newV = changePointer(V,IS);
 	}		
 }
