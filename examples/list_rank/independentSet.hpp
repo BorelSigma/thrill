@@ -23,6 +23,7 @@
 
 #define MAX_RAND_VALUE 10000
 
+
 namespace ListRank2 
 {
 	using namespace thrill;
@@ -157,11 +158,9 @@ namespace ListRank2
 		return nodes.Map([](const NodeValuePair &node){return node;});
 	}
 	
-
 	DIA<NodeValuePair> getComplement(DIA <NodeValuePair>& nodeList, DIA <NodeValuePair>& independentSet)
 	{
 		DIA<NodeValuePair> concatDia = nodeList.Concat(independentSet);
-
 		DIA<NodeValuePair> withoutDoubles = concatDia.ReduceByKey(
 			[](const NodeValuePair& in) -> Node {return in.n; },
 			[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair
@@ -202,7 +201,7 @@ namespace ListRank2
 		return tmp4.Collapse().Keep(1);
 	}
 
-	//template<typename InputStack>
+
 	static void runParallel(thrill::Context& ctx, std::vector<Edge> edges, std::string output) 
 	{
 		ctx.enable_consume();
@@ -251,13 +250,12 @@ namespace ListRank2
 		}
 
 		std::vector<DIA<NodeValuePair>> result;
-		result.push_back(fuse(nodes.back().Keep(1).Keep(1).Keep(1), independentSets[i].KeepForever())).Cache().Keep(1).Keep(1).Keep(1).Keep(1).Keep(1));
+		result.push_back(fuse(nodes.back().Keep(1).Keep(1).Keep(1), independentSets[i]).Cache().Keep(1).Keep(1).Keep(1).Keep(1).Keep(1));
 		i--;
-
 		while(i>0){
 			if(ctx.my_rank() == 0)
 				std::cout << "i: " <<  i << std::endl;
-			result.push_back(fuse(result.back().Keep(1).Keep(1).Keep(1), independentSets[i].Keep(1).Keep(1).Keep(1)).Keep(1).Keep(1).Keep(1).Keep(1).Keep(1).Collapse();
+			result.push_back(fuse(result.back().Keep(1).Keep(1).Keep(1), independentSets[i].Keep(1).Keep(1).Keep(1)).Keep(1).Keep(1).Keep(1).Keep(1).Keep(1).Collapse());
 			i--;
 		}
 		result.back().Keep(1).Sort([](const NodeValuePair &a, const NodeValuePair &b) -> bool{return a.v.dest >= b.v.dest;}).Print("DIA");
