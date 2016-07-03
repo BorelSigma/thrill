@@ -19,8 +19,11 @@
 #include <thrill/common/profile_task.hpp>
 #include <thrill/common/profile_thread.hpp>
 #include <thrill/common/string.hpp>
+#include <thrill/common/string_view.hpp>
 
 #include <cstring>
+#include <fstream>
+#include <limits>
 #include <string>
 #include <vector>
 #include <limits>
@@ -46,9 +49,12 @@ class LinuxProcStats final : public ProfileTask
 public:
     explicit LinuxProcStats(JsonLogger& logger) : logger_(logger) {
 
+        sc_pagesize_ = sysconf(_SC_PAGESIZE);
+
         file_stat_.open("/proc/stat");
         file_net_dev_.open("/proc/net/dev");
         file_diskstats_.open("/proc/diskstats");
+        file_meminfo_.open("/proc/meminfo");
 
         pid_t mypid = getpid();
         file_pid_stat_.open("/proc/" + std::to_string(mypid) + "/stat");
@@ -88,6 +94,9 @@ public:
     //! read /proc/diskstats
     void read_diskstats(JsonLine& out);
 
+    //! read /proc/meminfo
+    void read_meminfo(JsonLine& out);
+
     void RunTask(const steady_clock::time_point& tp) final {
 
         // JsonLine to construct
@@ -98,6 +107,7 @@ public:
         read_net_dev(tp, out);
         read_pid_io(tp, out);
         read_diskstats(out);
+        read_meminfo(out);
 
         tp_last_ = tp;
     }
@@ -116,9 +126,14 @@ private:
     std::ifstream file_pid_io_;
     //! open file handle to /proc/diskstats
     std::ifstream file_diskstats_;
+    //! open file handle to /proc/meminfo
+    std::ifstream file_meminfo_;
 
     //! last time point called
     steady_clock::time_point tp_last_;
+
+    //! sysconf(_SC_PAGESIZE)
+    size_t sc_pagesize_;
 
     struct CpuStat {
         unsigned long long user = 0;
@@ -222,6 +237,9 @@ private:
 
     //! previous reading from diskstats
     std::vector<DiskStats> diskstats_prev_;
+
+    //! helper method to parse size lines from /proc/meminfo
+    static bool parse_meminfo(const char* str, size_t& size);
 };
 
 JsonLine& LinuxProcStats::prepare_out(JsonLine& out) {
@@ -266,7 +284,6 @@ void LinuxProcStats::read_stat(JsonLine& out) {
                 &curr.steal,
                 &curr.guest,
                 &curr.guest_nice);
-
             if (ret < 4) die ("/proc/stat returned too few values");
 
             CpuStat& prev = cpu_prev_;
@@ -325,7 +342,6 @@ void LinuxProcStats::read_stat(JsonLine& out) {
                 &curr.steal,
                 &curr.guest,
                 &curr.guest_nice);
-
             if (ret < 5) die ("/proc/stat returned too few values");
 
             if (cpu_core_prev_.size() < core_id + 1)
@@ -422,7 +438,7 @@ void LinuxProcStats::read_pid_stat(JsonLine& out) {
     /*  it_real_value (obsolete, always 0) */
     /*  start_time    time the process started after system boot */
     /*  vsize         virtual memory size */
-    /*  rss           resident set memory size */
+    /*  rss           resident set memory size in SC_PAGESIZE units */
     /*  rsslim        current limit in bytes on the rss */
     int ret = sscanf(
         line.data(),
@@ -455,14 +471,14 @@ void LinuxProcStats::read_pid_stat(JsonLine& out) {
          << "cstime" << perc(pid_stat_prev_.cstime, curr.cstime, base)
          << "num_threads" << curr.num_threads
          << "vsize" << curr.vsize
-         << "rss" << curr.rss;
+         << "rss" << curr.rss * sc_pagesize_;
 
     prepare_out(out)
         << "pr_user" << perc(pid_stat_prev_.utime, curr.utime, base)
         << "pr_sys" << perc(pid_stat_prev_.stime, curr.stime, base)
         << "pr_nthreads" << curr.num_threads
         << "pr_vsize" << curr.vsize
-        << "pr_rss" << curr.rss;
+        << "pr_rss" << curr.rss * sc_pagesize_;
 
     pid_stat_prev_ = curr;
 }
@@ -726,6 +742,106 @@ void LinuxProcStats::read_diskstats(JsonLine& out) {
             << "ios_progr" << sum.ios_progr
             << "total_time" << double(sum.total_time) / 1e3
             << "rq_time" << double(sum.rq_time) / 1e3;
+    }
+}
+
+//! helper method to parse size lines from /proc/meminfo
+bool LinuxProcStats::parse_meminfo(const char* str, size_t& size) {
+    char* endptr;
+    size = strtoul(str, &endptr, 10);
+    // parse failed, no number
+    if (!endptr) return false;
+
+    // skip over spaces
+    while (*endptr == ' ') ++endptr;
+
+    // multiply with 2^power
+    if (*endptr == 'k' || *endptr == 'K')
+        size *= 1024, ++endptr;
+    else if (*endptr == 'm' || *endptr == 'M')
+        size *= 1024 * 1024, ++endptr;
+    else if (*endptr == 'g' || *endptr == 'G')
+        size *= 1024 * 1024 * 1024llu, ++endptr;
+
+    // byte indicator
+    if (*endptr == 'b' || *endptr == 'B') {
+        ++endptr;
+    }
+
+    // skip over spaces
+    while (*endptr == ' ') ++endptr;
+
+    return (*endptr == 0);
+}
+
+void LinuxProcStats::read_meminfo(JsonLine& out) {
+    if (!file_meminfo_.is_open()) return;
+
+    file_meminfo_.clear();
+    file_meminfo_.seekg(0);
+    if (!file_meminfo_.good()) return;
+
+    JsonLine mem = prepare_out(out).sub("meminfo");
+
+    size_t swap_total = 0, swap_free = 0;
+
+    std::string line;
+    while (std::getline(file_meminfo_, line)) {
+        std::string::size_type colonpos = line.find(':');
+        if (colonpos == std::string::npos) continue;
+
+        common::StringView key(line.begin(), line.begin() + colonpos);
+
+        size_t size;
+
+        if (key == "MemTotal") {
+            if (parse_meminfo(line.data() + colonpos + 1, size))
+                mem << "total" << size;
+        }
+        else if (key == "MemFree") {
+            if (parse_meminfo(line.data() + colonpos + 1, size))
+                mem << "free" << size;
+        }
+        else if (key == "MemAvailable") {
+            if (parse_meminfo(line.data() + colonpos + 1, size))
+                mem << "available" << size;
+        }
+        else if (key == "Buffers") {
+            if (parse_meminfo(line.data() + colonpos + 1, size))
+                mem << "buffers" << size;
+        }
+        else if (key == "Cached") {
+            if (parse_meminfo(line.data() + colonpos + 1, size))
+                mem << "cached" << size;
+        }
+        else if (key == "Mapped") {
+            if (parse_meminfo(line.data() + colonpos + 1, size))
+                mem << "mapped" << size;
+        }
+        else if (key == "Shmem") {
+            if (parse_meminfo(line.data() + colonpos + 1, size))
+                mem << "shmem" << size;
+        }
+        else if (key == "SwapTotal") {
+            if (parse_meminfo(line.data() + colonpos + 1, size)) {
+                mem << "swap_total" << size;
+                swap_total = size;
+                if (swap_total && swap_free) {
+                    mem << "swap_used" << swap_total - swap_free;
+                    swap_total = swap_free = 0;
+                }
+            }
+        }
+        else if (key == "SwapFree") {
+            if (parse_meminfo(line.data() + colonpos + 1, size)) {
+                mem << "swap_free" << size;
+                swap_free = size;
+                if (swap_total && swap_free) {
+                    mem << "swap_used" << swap_total - swap_free;
+                    swap_total = swap_free = 0;
+                }
+            }
+        }
     }
 }
 
