@@ -105,159 +105,166 @@ namespace ListRank2
 			{
 				return ((!node.v.isHelper)&((node.v.value0)&(node.n != 0)));
 			});
-	}
+		}
 
-	auto changePointer(auto v, auto is)
-	{
-		auto isTmp = is.Map([](const NodeValuePair &in)
+		auto changePointer(auto v, auto is)
 		{
-			return NodeValuePair{in.v.dest, NodeValues{in.n, false, false, in.v.edgeLength, true}};
-		});
-		auto vTmp = v.Map([](const NodeValuePair &in)
-		{
-			return NodeValuePair{
-				in.n, 
-				NodeValues{
-					in.v.dest,
-					false, 
-					false, 
-					in.v.edgeLength,
-					false}};
-				});
-		auto concatTmp = vTmp.Concat(isTmp);
+			auto isTmp = is.Map([](const NodeValuePair &in)
+			{
+				return NodeValuePair{in.v.dest, NodeValues{in.n, false, false, in.v.edgeLength, true}};
+			});
+			auto vTmp = v.Map([](const NodeValuePair &in)
+			{
+				return NodeValuePair{
+					in.n, 
+					NodeValues{
+						in.v.dest,
+						false, 
+						false, 
+						in.v.edgeLength,
+						false}};
+					});
+			auto concatTmp = vTmp.Concat(isTmp);
 
-		return concatTmp.ReduceByKey(
-			[](const NodeValuePair &in){return in.v.dest;},
-			[](const NodeValuePair &a, const NodeValuePair &b){
-				if(a.v.isHelper){
-					return NodeValuePair{
-						b.n,
-						NodeValues{
-							a.n,
-							false,
-							false,
-							a.v.edgeLength+ b.v.edgeLength,
-							false} 				
-						};
-					}else{
+			return concatTmp.ReduceByKey(
+				[](const NodeValuePair &in){return in.v.dest;},
+				[](const NodeValuePair &a, const NodeValuePair &b){
+					if(a.v.isHelper){
 						return NodeValuePair{
-							a.n,
+							b.n,
 							NodeValues{
-								b.n,
+								a.n,
 								false,
 								false,
 								a.v.edgeLength+ b.v.edgeLength,
 								false} 				
 							};
-						}
-					});
-	}
+						}else{
+							return NodeValuePair{
+								a.n,
+								NodeValues{
+									b.n,
+									false,
+									false,
+									a.v.edgeLength+ b.v.edgeLength,
+									false} 				
+								};
+							}
+						});
+		}
 
-	DIA<NodeValuePair> copy(DIA<NodeValuePair> &nodes)
-	{
-		return nodes.Map([](const NodeValuePair &node){return node;});
-	}
-	
-	DIA<NodeValuePair> getComplement(DIA <NodeValuePair>& nodeList, DIA <NodeValuePair>& independentSet)
-	{
-		DIA<NodeValuePair> concatDia = nodeList.Concat(independentSet);
-		DIA<NodeValuePair> withoutDoubles = concatDia.ReduceByKey(
-			[](const NodeValuePair& in) -> Node {return in.n; },
-			[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair
+		DIA<NodeValuePair> copy(DIA<NodeValuePair> &nodes)
+		{
+			return nodes.Map([](const NodeValuePair &node){return node;});
+		}
+		
+		DIA<NodeValuePair> getComplement(DIA <NodeValuePair>& nodeList, DIA <NodeValuePair>& independentSet)
+		{
+			DIA<NodeValuePair> concatDia = nodeList.Concat(independentSet);
+			DIA<NodeValuePair> withoutDoubles = concatDia.ReduceByKey(
+				[](const NodeValuePair& in) -> Node {return in.n; },
+				[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair
+				{
+					if(a.n == b.n)
+						return NodeValuePair{99999, NodeValues{99999,false,false,0,true}};
+				});
+
+			DIA<NodeValuePair> complement = withoutDoubles.Filter([](const NodeValuePair& in)
 			{
-				if(a.n == b.n)
-					return NodeValuePair{99999, NodeValues{99999,false,false,0,true}};
+				return !(in.v.dest == 99999);		
 			});
 
-		DIA<NodeValuePair> complement = withoutDoubles.Filter([](const NodeValuePair& in)
+			return complement;
+		}
+
+		auto fuse(DIA<NodeValuePair>& V, DIA<NodeValuePair>& IS)
 		{
-			return !(in.v.dest == 99999);		
-		});
-
-		return complement;
-	}
-
-	auto fuse(DIA<NodeValuePair>& V, DIA<NodeValuePair>& IS)
-	{
-		std::cout << "fuse called" << std::endl;
-		auto concatTmp = V.Concat(IS).Cache().Keep(1);
-		auto tmp1 = concatTmp
-		.ReduceByKey(
-			[](const NodeValuePair& node) -> Node {return node.v.dest;}, 
-			[](const NodeValuePair& a, const NodeValuePair& b)-> NodeValuePair
-			{
-				if(a.n == 0){
+			auto concatTmp = V.Concat(IS);
+			auto tmp1 = concatTmp
+			.ReduceByKey(
+				[](const NodeValuePair& node) -> Node {return node.v.dest;}, 
+				[](const NodeValuePair& a, const NodeValuePair& b)-> NodeValuePair
+				{
+					if(a.n == 0){
 					return NodeValuePair{0, NodeValues{b.n,false, false,a.v.edgeLength-b.v.edgeLength,true}}; //set isHelper to true for filtering doubles in next step
 				}else{
 					return NodeValuePair{0, NodeValues{a.n,false, false,b.v.edgeLength-a.v.edgeLength,true}}; //set isHelper to true for filtering doubles in next step
 				}
-			}).Collapse().Keep(1);
-		auto tmp2 = tmp1
-		.Filter([](const NodeValuePair &in){ return in.v.isHelper;}).Collapse().Keep(1);
-		auto tmp3 = tmp2
-		.Map([](const NodeValuePair &in){return NodeValuePair{in.n, NodeValues{in.v.dest, false, false, in.v.edgeLength, false}};}).Collapse().Keep(1);
-		auto tmp4 = tmp3
-		.Concat(V).Keep(1);
-		return tmp4.Collapse().Keep(1);
-	}
+			});
+			auto tmp2 = tmp1
+			.Filter([](const NodeValuePair &in){ return in.v.isHelper;});
+			auto tmp3 = tmp2
+			.Map([](const NodeValuePair &in){return NodeValuePair{in.n, NodeValues{in.v.dest, false, false, in.v.edgeLength, false}};});
+			auto tmp4 = tmp3
+			.Concat(V);
+			return tmp4;
+		}
 
 
-	static void runParallel(thrill::Context& ctx, std::vector<Edge> edges, std::string output) 
-	{
-		ctx.enable_consume();
-
-		auto nodeValue = Generate(ctx, 
-			[edges](const size_t& index)
-			{
-				NodeValuePair evp;
-				evp.n = edges[index].first;
-				evp.v.dest = edges[index].second;
-				evp.v.value0 = false;
-				evp.v.value1 = false;
-				evp.v.edgeLength = 1;
-				evp.v.isHelper = false;
-
-				return evp;
-			}, edges.size());
-
-		std::vector<DIA<NodeValuePair>> independentSets;
-		std::vector<DIA<NodeValuePair>> nodes;
-
-		DIA<NodeValuePair> IS = findIndependentSet(nodeValue);
-		DIA<NodeValuePair> vComplement  = getComplement(nodeValue,IS);
-		DIA<NodeValuePair> newV = changePointer(vComplement,IS).Keep(1);
-
-		uint32_t sizeV = newV.Size();
-
-		
-		independentSets.push_back(IS.Keep(1));
-		nodes.push_back(newV);
-		
-		uint32_t i = 0;
-		while(sizeV > 1)
+		static void runParallel(thrill::Context& ctx, std::vector<Edge> edges, std::string output) 
 		{
-			if(ctx.my_rank() == 0)
-				std::cout<<"TESTESTESTESTEST Size: "<<sizeV<<std::endl;
+			ctx.enable_consume();
 
-			DIA<NodeValuePair> IS2 = findIndependentSet(nodes[i]).Cache().Keep(1).Keep(1).Keep(1).Keep(1);
-			DIA<NodeValuePair> V2  = getComplement(nodes[i],IS2);
-			DIA<NodeValuePair> newV2 = changePointer(V2,IS2).Keep(1);
+			auto nodeValue = Generate(ctx, 
+				[edges](const size_t& index)
+				{
+					NodeValuePair evp;
+					evp.n = edges[index].first;
+					evp.v.dest = edges[index].second;
+					evp.v.value0 = false;
+					evp.v.value1 = false;
+					evp.v.edgeLength = 1;
+					evp.v.isHelper = false;
 
-			sizeV = newV2.Size();
-			independentSets.push_back(IS2.Keep(1).Keep(1).Keep(1).Keep(1));
-			nodes.push_back(newV2);
-			i++;
+					return evp;
+				}, edges.size());
+
+			std::vector<DIA<NodeValuePair>> independentSets;
+			std::vector<DIA<NodeValuePair>> nodes;
+
+			DIA<NodeValuePair> IS = findIndependentSet(nodeValue).Keep(1);
+			DIA<NodeValuePair> vComplement  = getComplement(nodeValue,IS).Keep(1);
+			DIA<NodeValuePair> newV = changePointer(vComplement,IS).Keep(1);
+
+			uint32_t sizeV = newV.Size();
+
+			
+			independentSets.push_back(IS.Collapse().Cache());
+			nodes.push_back(newV);
+			
+			uint32_t i = 0;
+			while(sizeV > 1)
+			{
+				if(ctx.my_rank() == 0)
+					std::cout<<"TESTESTESTESTEST Size: "<<sizeV<<std::endl;
+
+				DIA<NodeValuePair> IS2 = findIndependentSet(nodes[i]).Keep(1);
+				DIA<NodeValuePair> V2  = getComplement(nodes[i],IS2).Keep(1);
+				DIA<NodeValuePair> newV2 = changePointer(V2,IS2).Keep(1).Collapse();
+
+				sizeV = newV2.Keep(1).Size();
+				independentSets.push_back(IS2.Collapse().Cache());
+				nodes.push_back(newV2.Cache());
+				i++;
+			}
+
+
+			if(true){
+				for(auto &dia : nodes){
+					dia.Print("IS");
+				}
+			}else{
+				auto lastNodesDia = nodes.back().Keep(1).Keep(1).Keep(1);
+				std::vector<DIA<NodeValuePair>> result;
+				result.push_back(fuse(lastNodesDia, independentSets[i]).Keep(1).Keep(1).Keep(1));
+				i--;
+				while(i>0){
+					if(ctx.my_rank() == 0)
+						std::cout << "i: " <<  i << std::endl;
+					result.push_back(fuse(result.back(), independentSets[i]).Keep(1).Keep(1).Keep(1));
+					i--;
+				}
+				result.back().Keep(1).Sort([](const NodeValuePair &a, const NodeValuePair &b) -> bool{return a.v.dest >= b.v.dest;}).Print("DIA");
+			}
 		}
-
-		std::vector<DIA<NodeValuePair>> result;
-		result.push_back(fuse(nodes.back().Keep(1).Keep(1).Keep(1), independentSets[i]).Cache().Keep(1).Keep(1).Keep(1).Keep(1).Keep(1));
-		i--;
-		while(i>0){
-			if(ctx.my_rank() == 0)
-				std::cout << "i: " <<  i << std::endl;
-			result.push_back(fuse(result.back().Keep(1).Keep(1).Keep(1), independentSets[i].Keep(1).Keep(1).Keep(1)).Keep(1).Keep(1).Keep(1).Keep(1).Keep(1).Collapse());
-			i--;
-		}
-		result.back().Keep(1).Sort([](const NodeValuePair &a, const NodeValuePair &b) -> bool{return a.v.dest >= b.v.dest;}).Print("DIA");
 	}
-}
