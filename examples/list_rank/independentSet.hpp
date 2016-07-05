@@ -3,6 +3,7 @@
 #include <sstream>
 #include <thrill/api/context.hpp>
 #include <thrill/api/gather.hpp>
+#include <thrill/api/all_gather.hpp>
 #include <thrill/api/generate.hpp>
 #include <thrill/api/collapse.hpp>
 #include <thrill/api/dia.hpp>
@@ -200,7 +201,6 @@ namespace ListRank2
 			return tmp4;
 		}
 
-
 		static void runParallel(thrill::Context& ctx, std::vector<Edge> edges, std::string output) 
 		{
 			ctx.enable_consume();
@@ -219,52 +219,81 @@ namespace ListRank2
 					return evp;
 				}, edges.size());
 
-			std::vector<DIA<NodeValuePair>> independentSets;
+			std::vector<std::vector<NodeValuePair>> independentSets;
 			std::vector<DIA<NodeValuePair>> nodes;
 
-			DIA<NodeValuePair> IS = findIndependentSet(nodeValue).Keep(1);
-			DIA<NodeValuePair> vComplement  = getComplement(nodeValue,IS).Keep(1);
-			DIA<NodeValuePair> newV = changePointer(vComplement,IS).Keep(1);
+			DIA<NodeValuePair> IS = findIndependentSet(nodeValue);
+			DIA<NodeValuePair> vComplement  = getComplement(nodeValue,IS);
+			IS.Keep(1);
+			DIA<NodeValuePair> newV = changePointer(vComplement,IS);
 
-			uint32_t sizeV = newV.Size();
-
-			
-			independentSets.push_back(IS.Collapse().Cache());
+			uint32_t sizeV = newV.Keep(1).Size();
+			uint32_t sizeIS = IS.Keep(1).Size();
+			independentSets.push_back(IS.AllGather());
 			nodes.push_back(newV);
 			
-			uint32_t i = 0;
+			int32_t i = 0;
 			while(sizeV > 1)
 			{
 				if(ctx.my_rank() == 0)
 					std::cout<<"TESTESTESTESTEST Size: "<<sizeV<<std::endl;
 
-				DIA<NodeValuePair> IS2 = findIndependentSet(nodes[i]).Keep(1);
-				DIA<NodeValuePair> V2  = getComplement(nodes[i],IS2).Keep(1);
-				DIA<NodeValuePair> newV2 = changePointer(V2,IS2).Keep(1).Collapse();
+				DIA<NodeValuePair> IS2 = findIndependentSet(nodes[i]);
+				DIA<NodeValuePair> V2  = getComplement(nodes[i],IS2);
+				IS2.Keep(1);
+				DIA<NodeValuePair> newV2 = changePointer(V2,IS2);
 
 				sizeV = newV2.Keep(1).Size();
-				independentSets.push_back(IS2.Collapse().Cache());
-				nodes.push_back(newV2.Cache());
+				independentSets.push_back(IS2.AllGather());
+				nodes.push_back(newV2);
 				i++;
 			}
 
+			if(ctx.my_rank() == 0)
+				std::cout<<" phase 1 finished!"<<std::endl;
 
-			if(true){
-				for(auto &dia : nodes){
-					dia.Print("IS");
-				}
-			}else{
-				auto lastNodesDia = nodes.back().Keep(1).Keep(1).Keep(1);
-				std::vector<DIA<NodeValuePair>> result;
-				result.push_back(fuse(lastNodesDia, independentSets[i]).Keep(1).Keep(1).Keep(1));
+
+			auto lastNodesDia = nodes.back();
+			std::vector<DIA<NodeValuePair>> result;
+			auto isDia = Generate(ctx, 
+				[independentSets,i](const size_t& index)
+				{
+					NodeValuePair evp;
+					evp.n = independentSets[i][index].n;
+					evp.v.dest = independentSets[i][index].v.dest;
+					evp.v.value0 = false;
+					evp.v.value1 = false;
+					evp.v.edgeLength = independentSets[i][index].v.edgeLength;
+					evp.v.isHelper = false;
+					return evp;
+				}, independentSets[i].size());
+			result.push_back(fuse(lastNodesDia, isDia));
+			i--;
+
+			while(i>=0){
+				if(ctx.my_rank() == 0)
+					std::cout << "i: " <<  i << std::endl;
+					
+				auto isDia2 = Generate(ctx, 
+				[independentSets,i](const size_t& index) -> NodeValuePair
+				{
+					NodeValuePair evp;
+					evp.n = independentSets[i][index].n;
+					evp.v.dest = independentSets[i][index].v.dest;
+					evp.v.value0 = false;
+					evp.v.value1 = false;
+					evp.v.edgeLength = independentSets[i][index].v.edgeLength;
+					evp.v.isHelper = false;
+					return evp;
+				}, independentSets[i].size());
+				result.push_back(fuse(result.back(), isDia2));
+				
 				i--;
-				while(i>0){
-					if(ctx.my_rank() == 0)
-						std::cout << "i: " <<  i << std::endl;
-					result.push_back(fuse(result.back(), independentSets[i]).Keep(1).Keep(1).Keep(1));
-					i--;
-				}
-				result.back().Keep(1).Sort([](const NodeValuePair &a, const NodeValuePair &b) -> bool{return a.v.dest >= b.v.dest;}).Print("DIA");
+				
+			}	
+			if(ctx.my_rank() == 0){
+				std::cout << "phase 2 finished! " << std::endl;
 			}
+			result.back().Print("DIA RESULT!!");
 		}
 	}
