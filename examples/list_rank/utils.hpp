@@ -31,7 +31,8 @@ namespace ListRank2
 		}
 	} THRILL_ATTRIBUTE_PACKED;
 
-	void printDia(auto &dia, std::string path){
+	void printDia(auto &dia, std::string path)
+	{
 		dia.Map(
 			[](const NodeValuePair& e)	-> std::string
 			{
@@ -49,7 +50,7 @@ namespace ListRank2
 				ss6<<e.v.isHelper;
 				std::string output = "(" + ss.str() + ", "+ss2.str()+", "+ss3.str()+", "+ss4.str()+", "+ss5.str()+", "+ss6.str()+")";
 				return output;
-		}).WriteLines(path);
+			}).WriteLines(path);
 	}
 
 }

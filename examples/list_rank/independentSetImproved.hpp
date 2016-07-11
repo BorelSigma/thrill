@@ -7,6 +7,8 @@
 #include <thrill/api/generate.hpp>
 #include <thrill/api/collapse.hpp>
 #include <thrill/api/dia.hpp>
+#include <thrill/api/group_by_key.hpp>
+#include <thrill/api/group_to_index.hpp>
 #include <thrill/api/size.hpp>
 #include <thrill/api/min.hpp>
 #include <thrill/api/print.hpp>
@@ -35,107 +37,76 @@ namespace ListRank2
 	using NodeValuePair = ListRank2::NodeValuePair;
 	using NodeValues = ListRank2::NodeValues;
 
-	DIA<NodeValuePair> findIndependentSet(const DIA<NodeValuePair> nodeValue)
-	{
-		
+	DIA<NodeValuePair> prepareDia(const DIA<NodeValuePair> nodeValue){
 		return nodeValue.template FlatMap<NodeValuePair>(
-			[](const NodeValuePair &node, auto emit) 
-			{
-				uint32_t random_number_0 = rand()%MAX_RAND_VALUE;
-				bool value0 = (random_number_0 >= MAX_RAND_VALUE/2);	
-				if(node.n == 0) value0 = 0;
-				bool value1 = !value0;
-
-				emit(NodeValuePair{node.n, NodeValues{node.v.dest,value0,value1, node.v.edgeLength, false}});
-				emit(NodeValuePair{node.v.dest, NodeValues{node.n,value1,value0, node.v.edgeLength, true}});
-			}).ReduceByKey(
-			[](const NodeValuePair& in) -> Node 
-			{
-				return in.n;
-			},
-			[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair 
-			{
-				if(b.v.isHelper)
-				{
-					return NodeValuePair{a.n, NodeValues{a.v.dest, a.v.value0 & b.v.value0, false, a.v.edgeLength, false}};
-				}
-				else
-				{
-					return NodeValuePair{b.n, NodeValues{b.v.dest, b.v.value0 & a.v.value0, false,  b.v.edgeLength,false}};
-				}
-			}).Filter(
-			[](const NodeValuePair &node)
-			{
-				return ((!node.v.isHelper)&((node.v.value0)&(node.n != 0)));
-			});
-		}
-
-		auto changePointer(auto v, auto is)
+		[](const NodeValuePair &node, auto emit) 
 		{
-			auto isTmp = is.Map([](const NodeValuePair &in)
-			{
-				return NodeValuePair{in.v.dest, NodeValues{in.n, false, false, in.v.edgeLength, true}};
-			});
-			auto vTmp = v.Map([](const NodeValuePair &in)
-			{
-				return NodeValuePair{
-					in.n, 
-					NodeValues{
-						in.v.dest,
-						false, 
-						false, 
-						in.v.edgeLength,
-						false}};
-					});
-			auto concatTmp = vTmp.Concat(isTmp);
+			uint32_t random_number_0 = rand()%MAX_RAND_VALUE;
+			bool value0 = (random_number_0 >= MAX_RAND_VALUE/2);	
+			if(node.n == 0) value0 = 0;
+			bool value1 = !value0;
 
-			return concatTmp.ReduceByKey(
-				[](const NodeValuePair &in){return in.v.dest;},
-				[](const NodeValuePair &a, const NodeValuePair &b){
+			emit(NodeValuePair{node.n, NodeValues{node.v.dest,value0,value1, node.v.edgeLength, false}});
+			emit(NodeValuePair{node.v.dest, NodeValues{node.n,value1,value0, node.v.edgeLength, true}});
+		});
+	}
+
+
+
+	auto calculateIndependentSet(const DIA<NodeValuePair> preparedDia){
+		auto tmp1 =  preparedDia.ReduceByKey(
+		[](const NodeValuePair& in) -> Node 
+		{
+			return in.n;
+		},
+		[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair 
+		{
+
+			if(a.v.isHelper)
+			{
+				return NodeValuePair{b.n, NodeValues{b.v.dest, a.v.value0 & b.v.value0, false, b.v.edgeLength, false}};
+			}
+			else
+			{
+				return NodeValuePair{a.n, NodeValues{a.v.dest, a.v.value0 & b.v.value0, false, a.v.edgeLength, false}};
+			}
+			
+		}).Filter([](const NodeValuePair& p){return !p.v.isHelper;});
+
+		auto tmp2 = tmp1.FlatMap<NodeValuePair>(
+		[](const NodeValuePair &node, auto emit) 
+		{
+
+			emit(node);
+			if(node.v.value0){
+				emit(NodeValuePair{node.v.dest, NodeValues{node.n,false,false, node.v.edgeLength, true}});
+			}
+		});
+
+
+		return tmp2.template GroupByKey<NodeValuePair>(
+			[](const NodeValuePair &nvp){return nvp.v.dest;},
+			[](auto &iter, const auto something){
+				std::vector < NodeValuePair > edges;
+				while(iter.HasNext()){
+					edges.push_back(iter.Next());
+				}
+				if(edges.size()>1){
+					NodeValuePair a = edges[0];
+					NodeValuePair b = edges[1];
 					if(a.v.isHelper){
-						return NodeValuePair{
-							b.n,
-							NodeValues{
-								a.n,
-								false,
-								false,
-								a.v.edgeLength+ b.v.edgeLength,
-								false} 				
-							};
+							return NodeValuePair{b.n,NodeValues{a.n, false,true,a.v.edgeLength+ b.v.edgeLength,false}};
 						}else{
-							return NodeValuePair{
-								a.n,
-								NodeValues{
-									b.n,
-									false,
-									false,
-									a.v.edgeLength+ b.v.edgeLength,
-									false} 				
-								};
-							}
-						});
-		}
-		
-		DIA<NodeValuePair> getComplement(DIA <NodeValuePair>& nodeList, DIA <NodeValuePair>& independentSet)
-		{
-			DIA<NodeValuePair> concatDia = nodeList.Concat(independentSet);
-			DIA<NodeValuePair> withoutDoubles = concatDia.ReduceByKey(
-				[](const NodeValuePair& in) -> Node {return in.n; },
-				[](const NodeValuePair& a, const NodeValuePair& b) -> NodeValuePair
-				{
-					if(a.n == b.n)
-						return NodeValuePair{999999, NodeValues{999999,false,false,0,true}};
-				});
-
-			DIA<NodeValuePair> complement = withoutDoubles.Filter([](const NodeValuePair& in)
-			{
-				return !(in.v.dest == 999999);		
+							return NodeValuePair{a.n,NodeValues{b.n,false,true,a.v.edgeLength+ b.v.edgeLength,false}};
+						}
+				}else{
+					return edges.back();
+				}
+				
 			});
+	}
 
-			return complement;
-		}
-
-		auto fuse(DIA<NodeValuePair>& V, DIA<NodeValuePair>& IS)
+	auto fuse(DIA<NodeValuePair>& V, DIA<NodeValuePair>& IS)
 		{
 			auto concatTmp = V.Concat(IS);
 			auto tmp1 = concatTmp
@@ -158,9 +129,10 @@ namespace ListRank2
 			return tmp4;
 		}
 
-		static void runParallel(thrill::Context& ctx, std::vector<Edge> edges, std::string output) 
-		{
-			ctx.enable_consume();
+
+	static void runParallel(thrill::Context& ctx, std::vector<Edge> edges, std::string output) 
+	{
+		ctx.enable_consume();
 
 			auto nodeValue = Generate(ctx, 
 				[edges](const size_t& index)
@@ -179,13 +151,13 @@ namespace ListRank2
 			std::vector<std::vector<NodeValuePair>> independentSets;
 			std::vector<DIA<NodeValuePair>> nodes;
 
-			DIA<NodeValuePair> IS = findIndependentSet(nodeValue);
-			DIA<NodeValuePair> vComplement  = getComplement(nodeValue,IS);
-			IS.Keep(1);
-			DIA<NodeValuePair> newV = changePointer(vComplement,IS);
+			auto tmp0 = prepareDia(nodeValue);
+			DIA<NodeValuePair> tmp1 = calculateIndependentSet(tmp0).Keep(1);
+
+			DIA<NodeValuePair> newV  = tmp1.Filter([](const NodeValuePair& p){return !p.v.value0;});
+			DIA<NodeValuePair> IS  = tmp1.Filter([](const NodeValuePair& p){return p.v.value0;});
 
 			uint32_t sizeV = newV.Keep(1).Size();
-			uint32_t sizeIS = IS.Keep(1).Size();
 			independentSets.push_back(IS.AllGather());
 			
 			nodes.push_back(newV);
@@ -197,11 +169,11 @@ namespace ListRank2
 				if(ctx.my_rank() == 0)
 					std::cout<<"REMAINING SIZE: "<<sizeV<<std::endl;
 
-				DIA<NodeValuePair> IS2 = findIndependentSet(nodes[i]);
-				DIA<NodeValuePair> V2  = getComplement(nodes[i],IS2);
-				IS2.Keep(1);
-				DIA<NodeValuePair> newV2 = changePointer(V2,IS2);
+				auto tmp00= prepareDia(nodes.back());
+				DIA<NodeValuePair> tmp2 = calculateIndependentSet(tmp00).Keep(1);
 
+				DIA<NodeValuePair> newV2  = tmp2.Filter([](const NodeValuePair& p){return !p.v.value0;});
+				DIA<NodeValuePair> IS2  = tmp2.Filter([](const NodeValuePair& p){return p.v.value0;});
 				sizeV = newV2.Keep(1).Size();
 				independentSets.push_back(IS2.AllGather());
 				nodes.push_back(newV2);
@@ -238,4 +210,4 @@ namespace ListRank2
 
 			printDia(result.back(), "debug_logs/v.txt");
 		}
-	}
+}

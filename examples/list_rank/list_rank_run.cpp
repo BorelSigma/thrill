@@ -1,8 +1,8 @@
 #include <examples/graphgen2/SeedGen.hpp>
 
 #include <fstream>
-//#include <examples/list_rank/mapReduce.cpp>
-#include "independentSet.hpp"
+#include "independentSetImproved.hpp"
+//#include "independentSet.hpp"
 #include <thrill/api/context.hpp>
 #include <thrill/api/generate.hpp>
 #include <thrill/api/collapse.hpp>
@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
 	std::vector<Edge> edges;
 	
-	for(unsigned int i=0;i<200;i++)
+	for(unsigned int i=0;i<200000;i++)
 		edges.push_back(Edge(i,i+1));	
 		
 	std::string output = "test.txt";
