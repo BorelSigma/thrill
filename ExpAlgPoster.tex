@@ -1,6 +1,7 @@
 \documentclass[a0,portrait]{a0poster}
 \usepackage{ae-goethe-poster}
 \usepackage{tikz}
+\usepackage{url}
 \usetikzlibrary{arrows}
 
 \usepackage{float}
@@ -28,10 +29,9 @@
 Spätestens durch den Erfolg von Hadoop ist sichtbar geworden, dass ein hoher
  Bedarf an Big Data Frameworks besteht. Eine der Erfolgsfaktoren ist der
  Highlevel-Ansatz dieser Frameworks, der die Implementierung von parallelen
- Algorithmen erleichtert indem sämtliche Details vom Framework übernommen
- werden. Das bedeutet, dass der Anwender weder über die zugrundeliegende
- Topographie, noch um Themen wie Fehlerbehandlung kümmern muss. Dadurch werden
- diese Frameworks gerade für Big Data Analysen interessant.\\
+ Algorithmen erleichtert, indem sämtliche Details durch das Framework übernommen
+ werden. Das bedeutet, dass der Anwender weder die zugrundeliegende
+ Topographie kennen und sich nicht um Themen wie Fehlerbehandlung kümmern muss. Dadurch werden diese Frameworks gerade für Big Data Analysen interessant.\\
  Das Framework Thrill, welches sich noch in einem experimentellen Zustand
  befindet, versucht die Vorteile eines Highlevel-Ansatzes mit der Effizienz der
  Programmiersprache C++ zu verbinden. Hierbei wurden sämtliche Konzepte auf den
@@ -41,21 +41,19 @@ Spätestens durch den Erfolg von Hadoop ist sichtbar geworden, dass ein hoher
  Im Rahmen des Praktikums wurde List Rank mit Hilfe des Thrill-Frameworks
  implementiert und auf Effizienz untersucht.
  
-       
 \section*{Thrill}
 Eines der grundlegenden Konzepte in Thrill ist die Nutzung des Datentyps
 DIA (distributed immutable array), welche eine umfangreiche Schnittstelle zur
-Datenverarbeitung bietet. Sämtliche Methoden des Frameworks arbeiten auf solch
-einem DIA (bzw. geben ein solches zurück). Zu diesen Methoden gehören zum
+Datenverarbeitung bietet. Die meisten Methoden, die das Framework dem Nutzer bietet, arbeiten auf diesem Datentyp (bzw. geben ein solches zurück). Zu diesen Methoden gehören zum
 Beispiel Map und Reduce, welche auch in anderen Big Data Frameworks (Google
 MapReduce, Hadoop) Anwendung finden. Darüber hinaus werden jedoch noch weitere
-Methoden zur Verfügung gestellt, wordurch auch Probleme, die nur schwierig in
+Methoden zur Verfügung gestellt, wodurch Probleme, die nur schwierig in
 MapReduce abbildbar sind, einfach beschrieben werden können.
-In der Map-Phase wird eine nutzerdefinierte Funktion auf jedes Element der Liste
-angwendet und wird anschließend als Key-Value-Paar in eine neue Liste
-ausgegeben. In der Reducephase können anschließend alle Elemente mit gleichem
+In der Map-Phase wird eine benutzerdefinierte Funktion auf jedes Element der Liste
+angewendet und anschließend als Key-Value-Paar in eine neue Liste
+ausgegeben. In der Reduce-Phase können anschließend alle Elemente mit gleichem
 Key verarbeitet werden. Thrill sorgt im Hintergrund für die Verwaltung der Daten
-und der parallelen Ausführung der nutzerdefinierten Funktionen.
+und parallele Ausführung der benutzerdefinierten Funktionen.
 
         
 \section*{List Rank}
@@ -130,16 +128,14 @@ hat allerdings den Nachteil, dass zur Berechnung des Ranges von Knoten v der Ran
 bekannt sein muss. Für eine parallele Lösung des Problems wird somit ein anderer Ansatz benötigt.\\
 Unser hier gewählter Algorithmus besteht aus zwei Phasen: einer absteigenden Phase, in der die 
 Problemgröße reduziert wird und einer aufsteigenden Phase, die ausgehend von der Lösung der 
-Teilprobleme den Rang aller Knoten berechnet. Es wird also nach dem divide-and-conquer-Ansatz 
+Teilprobleme den Rang aller Knoten berechnet. Es wird also nach dem Divide-And-Conquer-Ansatz 
 vorgegangen. In der absteigenden Phase müssen jeweils Knoten aus dem aktuellen Problem entfernt 
 werden. Damit diese in der aufsteigenden Phase wieder hinzugefügt werden können, dürfen diese im 
-Pfad jedoch nicht aufeinander folgen. Die Berechnung einer solchen Menge ist als Independent Set 
-Problem bekannt.
+Pfad jedoch nicht aufeinander folgen. Die Berechnung einer solchen Menge ist als Independent Set Problem bekannt.
 
 \subsection*{Independent Set}
 
-Eine Teilmenge von Knoten ist genau dann ein Independent Set, wenn keine zwei Knoten miteinander 
-durch eine Kante verbunden sind:
+Eine Teilmenge von Knoten ist genau dann ein Independent Set, wenn keine zwei Knoten miteinander durch eine Kante verbunden sind:
 
 \begin{figure}[H]
 \begin{tikzpicture}
@@ -172,7 +168,7 @@ durch eine Kante verbunden sind:
 \label{islist}
 \end{figure}
 
-\noindent Dahingegen bilden die rot markierten Knoten in der folgenden Abbildung \textbf{\underline{kein}} independent set, da sie benachbart sind:
+\noindent Dahingegen bilden die rot markierten Knoten in der folgenden Abbildung \textbf{\underline{kein}} Independent Set, da sie benachbart sind:
 
 \begin{figure}[H]
 \begin{tikzpicture}
@@ -320,31 +316,26 @@ absteigenden Phase ist außerdem der Rang von g bekannt.
 \section*{Implementierung}
 Aufgrund des Map Reduce Konzepts von Thrill musste bei der Lösung vieler Teilprobleme von aus der Literatur bekannten Ansätze abgewichen werden. 
 Es hat sich gezeigt, dass bei der Berechnung des Independent Sets eine approximative Lösung vorzuziehen ist. 
-Mit unserer Implementierung, die nur einen MapReduce Schritt benötigt, konnte ein Erwahrtungswert von 25\% der Knoten pro Iteration erreicht werden. 
+Mit unserer Implementierung, die nur einen MapReduce Schritt benötigt, konnte im Durchschnitt eine Reduktion um 25\% der Knoten pro Iteration erreicht werden. 
 Ein exakter Algorithmus würde zwischen 33\% und 50\% Reduktion erreichen, dabei jedoch erheblich mehr MapReduce Operationen benötigen, was im hier gegebenen 
 Problem eine höhere Laufzeit zur Folge hätte.\\
 Der von uns entwickelte Algorithmus zieht auf den Kanten einen boolschen Wert für den Anfangsknoten. Der Wert für den Endknoten wird anschließend auf 
-das Komplement gesetzt. Jedem Knoten sind nun zwei boolsche Werte zugeordnet. Dieser Knoten wird nur dem Independent Set hinzugefügt, falls beide seiner Werte 1 sind. 
-Bedingt durch die Konzepte von Thrill stand uns ausschließlich MapReduce als Werkzeug, um zwischen zwei benachbarten Kanten zu kommunizieren, zur Verfügung. 
-Um hierbei Information auszutauschen, musste für jede Kante eine Hilfskante erzeugt werden, welche als übermittelte Nachricht betrachtet werden kann. \\ 
-Hinsichtlicher der Laufzeit des Programms konnten einige Verbesserungsmöglichkeiten identifiziert werden. Einer der Hauptpunkte war die Reduzierung von Operationen, die 
-eine Kommunikation zwischen allen Rechenknoten zur Folge hat. So wurden auch die Berechnung des Independent Set mit anderen Berechnungen, wie das Komplement dieses Sets, 
-in einem Schritt zusammengeführt. Das verhindert das überflüssige Konkatenieren der Ergebnisse.\\
-Eine noch größere Verbesserung konnte erzielt werden, indem die Thrill Datentypen lediglich zur Berechnung herangezogen wurden und die Werte anschließend lokal 
-zwischengespeichert wurden.
+das Komplement gesetzt. Jedem Knoten sind nun zwei boolsche Werte zugeordnet. Ein Knoten wird nur dem Independent Set hinzugefügt, falls beide seiner Werte 1 sind. 
+Bedingt durch die Konzepte von Thrill stand uns ausschließlich MapReduce als Werkzeug zur Verfügung, um Vergleiche zwischen zwei Kanten durchzuführen. 
+Dafür musste für jede Kante eine Hilfskante erzeugt werden, welche als übermittelte Nachricht betrachtet werden kann. \\ 
+Hinsichtlich der Laufzeit des Programms konnten einige Verbesserungsmöglichkeiten identifiziert werden. Einer der Hauptpunkte war die Reduzierung von Operationen, die 
+eine Kommunikation zwischen allen Rechenknoten zur Folge hat. So wurden auch die Berechnung des Independent Set mit anderen Berechnungen, wie das Komplement des Sets, 
+in einem Schritt zusammengeführt. Das spart überflüssige Konkatenieren der Ergebnisse.\\
+Eine noch größere Verbesserung konnte erzielt werden, indem die Thrill-internen Datentypen lediglich zur Berechnung herangezogen wurden und die Werte anschließend lokal zwischengespeichert wurden.
 
 \section*{Ergebnisse}
 
-In unseren Versuchen konnte mit Hilfe des Thrill-Frameworks Problemgrößen bis 2 Millionen Knoten 
-gelöst werden. Bei größere Eingaben konnte das Programm keine Lösung ermitteln, sondern lief bis 
-zum manuellen Abbruch weiter. Der angenommene Grund hierfür ist die noch experimentelle 
-Speicherverwaltung von Thrill, so dass die eigentlich interessanteren Problemgrößen nicht getestet 
-werden konnten. Daher konnte auch bei Scaling-Experimenten kein signifikanter Speed-Up verzeichnet 
-werden. Dies wäre vermutlich erst bei größeren Eingaben sichtbar.\\
+In unseren Versuchen konnte mit Hilfe des Thrill-Framework Problemgrößen bis 4 Millionen Knoten gelöst werden. Bei größere Eingaben konnte das Programm keine Lösung ermitteln, sondern lief bis zum manuellen Abbruch weiter. Der angenommene Grund hierfür ist die noch experimentelle Speicherverwaltung von Thrill. Aus diesem Grund konnten die eigentlich interessanteren Problemgrößen nicht getestet werden. Daher konnte auch bei Skalierungsexperimenten keine signifikanten Performance-Verbesserungen verzeichnet 
+werden. Diese wäre vermutlich erst bei größeren Eingaben sichtbar.\\
 In der folgenden Tabelle ist ein Strong-Scaling Experiment mit 1 Millionen Knoten als Eingabegraph
 aufgetragen.
 
-\begin{table}[H]          %so funktionieren die Tabellen
+\begin{table}          %so funktionieren die Tabellen
 % in LaTeX
 \centering
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lccccccccc}
@@ -364,13 +355,12 @@ aufgetragen.
 
 
 \section*{Fazit}
-Es zeigt sich, dass es möglich ist auch Graphenprobleme in Thrill zu lösen. Allerdings konnten die 
-Erwartungen in Scalingexperimenten nicht erfüllt werden.                
-        
-\end{multicols}
-\end{document}
+Anhand des List Rank Algorithmus konnte gezeigt werden, dass auch komplexe Algorithmen mit dem Konzept MapReduce und Thrill grundlegend parallel implementiert werden können. Aufgrund des experimentellen Status des Frameworks konnten keine aussagekräftigen Ergebnisse bzgl. der Performance und Skalierbarkeit ermittelt werden. Die Konzepte von Thrill konnten bei der Implementierung des Algorithmus dennoch mit der Vielzahl an nützlichen Methoden rund um den Datentyp DIA überzeugen. 
 
 \begin{thebibliography}{}    %so wird das Literaturverzeicnis erstellt
-\bibitem{1} Thrill HP
-\bibitem{2} Buch
+	\bibitem{1} Thrill Project, \url{http://http://project-thrill.org/}
+	\bibitem{2} Algorithms for memory hierarchies: advanced lectures, Ulrich et al., 2003, Springer Verlag
 \end{thebibliography}
+       
+\end{multicols}
+\end{document}
